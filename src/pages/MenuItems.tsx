@@ -257,16 +257,21 @@ export const MenuItems: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-slide-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-slide-in-up">
         <div>
-          <h1 className="text-3xl font-bold">Menu Items</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
+            Menu Items
+          </h1>
+          <p className="text-muted-foreground mt-2 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
             Manage your restaurant's menu items
           </p>
         </div>
-        <Button onClick={handleAddItem} className="bg-gradient-primary shadow-elegant">
+        <Button
+          onClick={handleAddItem}
+          className="admin-button admin-gradient shadow-[var(--shadow-elegant)] hover:shadow-[var(--shadow-glow)]"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add Menu Item
         </Button>
@@ -274,62 +279,70 @@ export const MenuItems: React.FC = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="admin-card">
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
           <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <UtensilsCrossed className="w-5 h-5 text-primary" />
+            <div className="flex items-center justify-between">
               <div>
                 {loading ? (
-                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16 admin-shimmer" />
                 ) : (
-                  <p className="text-2xl font-bold">{menuItems.length}</p>
+                  <p className="text-2xl font-bold group-hover:text-primary transition-colors">{menuItems.length}</p>
                 )}
                 <p className="text-sm text-muted-foreground">Total Items</p>
               </div>
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <UtensilsCrossed className="w-6 h-6 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="admin-card">
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.3s' }}>
           <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <Eye className="w-5 h-5 text-success" />
+            <div className="flex items-center justify-between">
               <div>
                 {loading ? (
-                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16 admin-shimmer" />
                 ) : (
-                  <p className="text-2xl font-bold">{menuItems.filter(item => item.available).length}</p>
+                  <p className="text-2xl font-bold text-success group-hover:text-success/80 transition-colors">{menuItems.filter(item => item.available).length}</p>
                 )}
                 <p className="text-sm text-muted-foreground">Available</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="admin-card">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <EyeOff className="w-5 h-5 text-muted-foreground" />
-              <div>
-                {loading ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  <p className="text-2xl font-bold">{menuItems.filter(item => !item.available).length}</p>
-                )}
-                <p className="text-sm text-muted-foreground">Unavailable</p>
+              <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
+                <Eye className="w-6 h-6 text-success" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="admin-card">
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.4s' }}>
           <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <ImageIcon className="w-5 h-5 text-warning" />
+            <div className="flex items-center justify-between">
               <div>
                 {loading ? (
-                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16 admin-shimmer" />
                 ) : (
-                  <p className="text-2xl font-bold">{menuItems.filter(item => item.featured).length}</p>
+                  <p className="text-2xl font-bold group-hover:text-muted-foreground transition-colors">{menuItems.filter(item => !item.available).length}</p>
+                )}
+                <p className="text-sm text-muted-foreground">Unavailable</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-muted/20 flex items-center justify-center group-hover:bg-muted/30 transition-colors">
+                <EyeOff className="w-6 h-6 text-muted-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.5s' }}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                {loading ? (
+                  <Skeleton className="h-8 w-16 admin-shimmer" />
+                ) : (
+                  <p className="text-2xl font-bold text-warning group-hover:text-warning/80 transition-colors">{menuItems.filter(item => item.featured).length}</p>
                 )}
                 <p className="text-sm text-muted-foreground">Featured</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
+                <ImageIcon className="w-6 h-6 text-warning" />
               </div>
             </div>
           </CardContent>
@@ -337,7 +350,7 @@ export const MenuItems: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <Card className="admin-card">
+      <Card className="admin-card animate-slide-in-up" style={{ animationDelay: '0.6s' }}>
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -346,11 +359,11 @@ export const MenuItems: React.FC = () => {
                 placeholder="Search menu items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 admin-input"
               />
             </div>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px] admin-input">
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent>
@@ -368,27 +381,35 @@ export const MenuItems: React.FC = () => {
 
       {/* Menu Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredItems.map((item) => (
-          <Card key={item.id} className="admin-card overflow-hidden">
-            <div className="aspect-video bg-muted relative">
+        {filteredItems.map((item, index) => (
+          <Card
+            key={item.id}
+            className="admin-card overflow-hidden group animate-slide-in-up"
+            style={{ animationDelay: `${0.7 + index * 0.1}s` }}
+          >
+            <div className="aspect-video bg-muted relative overflow-hidden">
               {item.image ? (
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:opacity-90 transition-opacity duration-300"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <ImageIcon className="w-12 h-12 text-muted-foreground" />
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                  <ImageIcon className="w-12 h-12 text-muted-foreground group-hover:text-muted-foreground/70 transition-colors" />
                 </div>
               )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
               <div className="absolute top-3 right-3 flex space-x-2">
                 {item.featured && (
-                  <Badge className="bg-warning text-warning-foreground">
+                  <Badge className="bg-warning text-warning-foreground shadow-[var(--shadow-soft)] animate-glow">
                     Featured
                   </Badge>
                 )}
-                <Badge variant={item.available ? "default" : "secondary"}>
+                <Badge
+                  variant={item.available ? "default" : "secondary"}
+                  className="shadow-[var(--shadow-soft)]"
+                >
                   {item.available ? "Available" : "Unavailable"}
                 </Badge>
               </div>

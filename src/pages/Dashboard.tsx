@@ -67,11 +67,12 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-slide-in-up">
       {/* Welcome Section */}
-      <div className="admin-card p-8 admin-gradient text-white">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="admin-card p-8 admin-gradient-hero text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50 pointer-events-none"></div>
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="animate-slide-in-up">
             {loading ? (
               <>
                 <Skeleton className="h-9 w-64 mb-2 bg-white/20" />
@@ -79,18 +80,18 @@ export const Dashboard: React.FC = () => {
               </>
             ) : (
               <>
-                <h1 className="text-3xl font-bold mb-2">
+                <h1 className="text-3xl font-bold mb-2 animate-slide-in-up">
                   Welcome back{userProfile?.restaurantName ? `, ${userProfile.restaurantName}!` : '!'}
                 </h1>
-                <p className="text-white/90 text-lg">
+                <p className="text-white/90 text-lg animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
                   Manage your restaurant menu and track performance
                 </p>
               </>
             )}
           </div>
-          <div className="hidden md:block">
-            <div className="w-24 h-24 bg-white/10 rounded-2xl flex items-center justify-center">
-              <BarChart3 className="w-12 h-12 text-white" />
+          <div className="hidden md:block animate-float">
+            <div className="w-24 h-24 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 shadow-[var(--shadow-soft)]">
+              <BarChart3 className="w-12 h-12 text-white animate-glow" />
             </div>
           </div>
         </div>
@@ -98,18 +99,20 @@ export const Dashboard: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="admin-card">
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">
               Categories
             </CardTitle>
-            <FolderOpen className="w-4 h-4 text-primary" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <FolderOpen className="w-5 h-5 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-8 w-16 mb-1 admin-shimmer" />
             ) : (
-              <div className="text-2xl font-bold">{stats.totalCategories}</div>
+              <div className="text-2xl font-bold group-hover:text-primary transition-colors">{stats.totalCategories}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Menu categories
@@ -117,18 +120,20 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="admin-card">
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">
               Menu Items
             </CardTitle>
-            <UtensilsCrossed className="w-4 h-4 text-primary" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <UtensilsCrossed className="w-5 h-5 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-8 w-16 mb-1 admin-shimmer" />
             ) : (
-              <div className="text-2xl font-bold">{stats.totalItems}</div>
+              <div className="text-2xl font-bold group-hover:text-primary transition-colors">{stats.totalItems}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Total menu items
@@ -136,18 +141,20 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="admin-card">
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.3s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-success transition-colors">
               Active Items
             </CardTitle>
-            <TrendingUp className="w-4 h-4 text-success" />
+            <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
+              <TrendingUp className="w-5 h-5 text-success" />
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-8 w-16 mb-1 admin-shimmer" />
             ) : (
-              <div className="text-2xl font-bold text-success">{stats.activeItems}</div>
+              <div className="text-2xl font-bold text-success group-hover:text-success/80 transition-colors">{stats.activeItems}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Available to customers
@@ -155,18 +162,20 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="admin-card">
+        <Card className="admin-stats-card group animate-slide-in-up" style={{ animationDelay: '0.4s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">
               Total Views
             </CardTitle>
-            <Eye className="w-4 h-4 text-primary" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <Eye className="w-5 h-5 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-8 w-16 mb-1 admin-shimmer" />
             ) : (
-              <div className="text-2xl font-bold">{stats.totalViews}</div>
+              <div className="text-2xl font-bold group-hover:text-primary transition-colors">{stats.totalViews}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Menu page views
@@ -177,29 +186,31 @@ export const Dashboard: React.FC = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="admin-card">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FolderOpen className="w-5 h-5 text-primary" />
+        <Card className="admin-card group animate-slide-in-up" style={{ animationDelay: '0.5s' }}>
+          <CardHeader className="relative">
+            <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <FolderOpen className="w-6 h-6 text-primary" />
+            </div>
+            <CardTitle className="flex items-center space-x-2 group-hover:text-primary transition-colors">
               <span>Manage Categories</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="mt-2">
               Organize your menu into categories for better customer experience
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                Current categories: {stats.totalCategories}
+                Current categories: <span className="font-semibold text-foreground">{stats.totalCategories}</span>
               </div>
               <div className="flex space-x-3">
-                <Button asChild className="flex-1">
+                <Button asChild className="flex-1 admin-button admin-gradient">
                   <Link to="/categories">
                     <Eye className="w-4 h-4 mr-2" />
                     View All
                   </Link>
                 </Button>
-                <Button variant="outline" asChild>
+                <Button variant="outline" asChild className="admin-button hover:border-primary">
                   <Link to="/categories">
                     <Plus className="w-4 h-4 mr-2" />
                     Add New
@@ -210,29 +221,31 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="admin-card">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <UtensilsCrossed className="w-5 h-5 text-primary" />
+        <Card className="admin-card group animate-slide-in-up" style={{ animationDelay: '0.6s' }}>
+          <CardHeader className="relative">
+            <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <UtensilsCrossed className="w-6 h-6 text-primary" />
+            </div>
+            <CardTitle className="flex items-center space-x-2 group-hover:text-primary transition-colors">
               <span>Manage Menu Items</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="mt-2">
               Add, edit, and manage all your delicious menu items
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                Current items: {stats.totalItems} ({stats.activeItems} active)
+                Current items: <span className="font-semibold text-foreground">{stats.totalItems}</span> (<span className="font-semibold text-success">{stats.activeItems} active</span>)
               </div>
               <div className="flex space-x-3">
-                <Button asChild className="flex-1">
+                <Button asChild className="flex-1 admin-button admin-gradient">
                   <Link to="/menu-items">
                     <Eye className="w-4 h-4 mr-2" />
                     View All
                   </Link>
                 </Button>
-                <Button variant="outline" asChild>
+                <Button variant="outline" asChild className="admin-button hover:border-primary">
                   <Link to="/menu-items">
                     <Plus className="w-4 h-4 mr-2" />
                     Add New

@@ -226,16 +226,21 @@ export const Categories: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-slide-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-slide-in-up">
         <div>
-          <h1 className="text-3xl font-bold">Categories</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
+            Categories
+          </h1>
+          <p className="text-muted-foreground mt-2 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
             Organize your menu items into categories
           </p>
         </div>
-        <Button onClick={handleAddCategory} className="bg-gradient-primary shadow-elegant">
+        <Button
+          onClick={handleAddCategory}
+          className="admin-button admin-gradient shadow-[var(--shadow-elegant)] hover:shadow-[var(--shadow-glow)]"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add Category
         </Button>
