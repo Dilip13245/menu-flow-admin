@@ -3,14 +3,15 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Firebase configuration - replace with your actual config
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-auth-domain",
-  projectId: "your-project-id",
-  storageBucket: "your-storage-bucket",
-  messagingSenderId: "your-messaging-sender-id",
-  appId: "your-app-id"
+  apiKey: "AIzaSyCcJgANsxjpwpWFaRxG3rQxfpdlq6kbVJM",
+  authDomain: "qrmenu-7d16d.firebaseapp.com",
+  projectId: "qrmenu-7d16d",
+  storageBucket: "qrmenu-7d16d.firebasestorage.app",
+  messagingSenderId: "976316644154",
+  appId: "1:976316644154:web:d78bc2e5dd9052ebccee03",
+  measurementId: "G-KFXRV0XYJH"
 };
 
 // Initialize Firebase
