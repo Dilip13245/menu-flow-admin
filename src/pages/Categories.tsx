@@ -7,10 +7,10 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Plus, 
-  Edit2, 
-  Trash2, 
+import {
+  Plus,
+  Edit2,
+  Trash2,
   FolderOpen,
   Eye,
   EyeOff,
@@ -18,15 +18,17 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { 
-  Category, 
-  getCategories, 
-  addCategory, 
-  updateCategory, 
-  deleteCategory, 
+import { ImageUpload } from '@/components/ui/image-upload';
+import {
+  Category,
+  getCategories,
+  addCategory,
+  updateCategory,
+  deleteCategory,
   subscribeToCategories,
-  getMenuItems 
+  getMenuItems
 } from '@/lib/firestore';
+import { uploadCategoryImage, deleteImage } from '@/lib/storage';
 
 export const Categories: React.FC = () => {
   const { toast } = useToast();
@@ -34,12 +36,14 @@ export const Categories: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [imageUploading, setImageUploading] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    visible: true
+    visible: true,
+    image: ''
   });
 
   useEffect(() => {
@@ -80,7 +84,7 @@ export const Categories: React.FC = () => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setFormData({ name: '', description: '', visible: true });
+    setFormData({ name: '', description: '', visible: true, image: '' });
     setIsDialogOpen(true);
   };
 
@@ -89,7 +93,8 @@ export const Categories: React.FC = () => {
     setFormData({
       name: category.name,
       description: category.description,
-      visible: category.visible
+      visible: category.visible,
+      image: category.image || ''
     });
     setIsDialogOpen(true);
   };
@@ -181,6 +186,43 @@ export const Categories: React.FC = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleImageSelect = async (file: File) => {
+    if (!user) return;
+
+    setImageUploading(true);
+    try {
+      // Create a temporary ID for new categories
+      const categoryId = editingCategory?.id || `temp_${Date.now()}`;
+      const imageUrl = await uploadCategoryImage(user.uid, categoryId, file);
+
+      setFormData(prev => ({ ...prev, image: imageUrl }));
+
+      toast({
+        title: "Image uploaded",
+        description: "Category image has been uploaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleImageRemove = async () => {
+    if (formData.image) {
+      try {
+        await deleteImage(formData.image);
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+      }
+    }
+    setFormData(prev => ({ ...prev, image: '' }));
   };
 
   return (
@@ -353,7 +395,7 @@ export const Categories: React.FC = () => {
               {editingCategory ? 'Edit Category' : 'Add New Category'}
             </DialogTitle>
             <DialogDescription>
-              {editingCategory 
+              {editingCategory
                 ? 'Update the category information below.'
                 : 'Create a new category to organize your menu items.'
               }
@@ -380,6 +422,16 @@ export const Categories: React.FC = () => {
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 className="admin-input"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Category Image</Label>
+              <ImageUpload
+                onImageSelect={handleImageSelect}
+                onImageRemove={handleImageRemove}
+                currentImage={formData.image}
+                loading={imageUploading}
               />
             </div>
 

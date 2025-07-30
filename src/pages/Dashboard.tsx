@@ -1,23 +1,69 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  FolderOpen, 
-  UtensilsCrossed, 
-  Eye, 
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  FolderOpen,
+  UtensilsCrossed,
+  Eye,
   TrendingUp,
   Plus,
   BarChart3
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { useToast } from '@/hooks/use-toast';
+import {
+  getCategories,
+  getMenuItems,
+  getUserProfile,
+  Category,
+  MenuItem,
+  UserProfile
+} from '@/lib/firestore';
 
 export const Dashboard: React.FC = () => {
-  // Mock data - in real app, fetch from Firestore
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [profileData, categoriesData, menuItemsData] = await Promise.all([
+          getUserProfile(user.uid),
+          getCategories(user.uid),
+          getMenuItems(user.uid)
+        ]);
+
+        setUserProfile(profileData);
+        setCategories(categoriesData);
+        setMenuItems(menuItemsData);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [user, toast]);
+
   const stats = {
-    totalCategories: 8,
-    totalItems: 45,
-    activeItems: 42,
-    totalViews: 1247
+    totalCategories: categories.length,
+    totalItems: menuItems.length,
+    activeItems: menuItems.filter(item => item.available).length,
+    totalViews: 0 // This would come from analytics in a real app
   };
 
   return (
@@ -26,10 +72,21 @@ export const Dashboard: React.FC = () => {
       <div className="admin-card p-8 admin-gradient text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
-            <p className="text-white/90 text-lg">
-              Manage your restaurant menu and track performance
-            </p>
+            {loading ? (
+              <>
+                <Skeleton className="h-9 w-64 mb-2 bg-white/20" />
+                <Skeleton className="h-6 w-80 bg-white/20" />
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold mb-2">
+                  Welcome back{userProfile?.restaurantName ? `, ${userProfile.restaurantName}!` : '!'}
+                </h1>
+                <p className="text-white/90 text-lg">
+                  Manage your restaurant menu and track performance
+                </p>
+              </>
+            )}
           </div>
           <div className="hidden md:block">
             <div className="w-24 h-24 bg-white/10 rounded-2xl flex items-center justify-center">
@@ -49,7 +106,11 @@ export const Dashboard: React.FC = () => {
             <FolderOpen className="w-4 h-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCategories}</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold">{stats.totalCategories}</div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
               Menu categories
             </p>
@@ -64,7 +125,11 @@ export const Dashboard: React.FC = () => {
             <UtensilsCrossed className="w-4 h-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalItems}</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold">{stats.totalItems}</div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
               Total menu items
             </p>
@@ -79,7 +144,11 @@ export const Dashboard: React.FC = () => {
             <TrendingUp className="w-4 h-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{stats.activeItems}</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold text-success">{stats.activeItems}</div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
               Available to customers
             </p>
@@ -94,7 +163,11 @@ export const Dashboard: React.FC = () => {
             <Eye className="w-4 h-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalViews}</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold">{stats.totalViews}</div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
               Menu page views
             </p>
@@ -171,40 +244,32 @@ export const Dashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Recent Activity */}
-      <Card className="admin-card">
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>
-            Latest changes to your menu
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4 p-3 bg-muted/30 rounded-lg">
-              <div className="w-2 h-2 bg-success rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Added new item: "Grilled Salmon"</p>
-                <p className="text-xs text-muted-foreground">2 hours ago</p>
-              </div>
+      {/* Recent Items */}
+      {!loading && menuItems.length > 0 && (
+        <Card className="admin-card">
+          <CardHeader>
+            <CardTitle>Recent Menu Items</CardTitle>
+            <CardDescription>
+              Your latest menu additions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {menuItems.slice(0, 3).map((item) => (
+                <div key={item.id} className="flex items-center space-x-4 p-3 bg-muted/30 rounded-lg">
+                  <div className={`w-2 h-2 rounded-full ${item.available ? 'bg-success' : 'bg-muted-foreground'}`}></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.categoryName} • ${item.price.toFixed(2)} • {item.available ? 'Available' : 'Unavailable'}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center space-x-4 p-3 bg-muted/30 rounded-lg">
-              <div className="w-2 h-2 bg-primary rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Updated category: "Main Courses"</p>
-                <p className="text-xs text-muted-foreground">5 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 p-3 bg-muted/30 rounded-lg">
-              <div className="w-2 h-2 bg-warning rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Disabled item: "Seasonal Soup"</p>
-                <p className="text-xs text-muted-foreground">1 day ago</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

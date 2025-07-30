@@ -29,6 +29,7 @@ export interface Category {
   description: string;
   visible: boolean;
   order: number;
+  image?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

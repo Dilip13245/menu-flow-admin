@@ -1,39 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { User, Mail, Lock, Store, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  getUserProfile,
+  updateUserProfile,
+  createUserProfile,
+  UserProfile
+} from '@/lib/firestore';
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 
 export const Profile: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  
+  const [dataLoading, setDataLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
   const [profileData, setProfileData] = useState({
-    restaurantName: 'My Restaurant',
+    restaurantName: '',
     email: user?.email || '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
 
+  useEffect(() => {
+    if (!user) return;
+
+    const loadProfile = async () => {
+      try {
+        setDataLoading(true);
+        let profile = await getUserProfile(user.uid);
+
+        // If profile doesn't exist, create one
+        if (!profile) {
+          profile = await createUserProfile(user.uid, user.email || '', 'My Restaurant');
+        }
+
+        setUserProfile(profile);
+        setProfileData(prev => ({
+          ...prev,
+          restaurantName: profile?.restaurantName || '',
+          email: user.email || ''
+        }));
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load profile data.",
+          variant: "destructive",
+        });
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [user, toast]);
+
   const handleUpdateProfile = async () => {
+    if (!user || !profileData.restaurantName.trim()) {
+      toast({
+        title: "Error",
+        description: "Restaurant name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      await updateUserProfile(user.uid, {
+        restaurantName: profileData.restaurantName
+      });
+
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const handleChangePassword = async () => {
+    if (!user) return;
+
     if (profileData.newPassword !== profileData.confirmPassword) {
       toast({
         title: "Error",
@@ -52,22 +116,53 @@ export const Profile: React.FC = () => {
       return;
     }
 
+    if (!profileData.currentPassword) {
+      toast({
+        title: "Error",
+        description: "Current password is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      // Re-authenticate user before changing password
+      const credential = EmailAuthProvider.credential(user.email!, profileData.currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Update password
+      await updatePassword(user, profileData.newPassword);
+
       toast({
         title: "Password changed",
         description: "Your password has been changed successfully.",
       });
+
       setProfileData(prev => ({
         ...prev,
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
       }));
+    } catch (error: any) {
+      let errorMessage = "Failed to change password.";
+
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = "Current password is incorrect.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "New password is too weak.";
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -94,16 +189,20 @@ export const Profile: React.FC = () => {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="restaurantName">Restaurant Name</Label>
-            <Input
-              id="restaurantName"
-              placeholder="Enter your restaurant name"
-              value={profileData.restaurantName}
-              onChange={(e) => setProfileData(prev => ({ ...prev, restaurantName: e.target.value }))}
-              className="admin-input"
-            />
+            {dataLoading ? (
+              <Skeleton className="h-10 w-full" />
+            ) : (
+              <Input
+                id="restaurantName"
+                placeholder="Enter your restaurant name"
+                value={profileData.restaurantName}
+                onChange={(e) => setProfileData(prev => ({ ...prev, restaurantName: e.target.value }))}
+                className="admin-input"
+              />
+            )}
           </div>
 
-          <Button 
+          <Button
             onClick={handleUpdateProfile}
             disabled={loading}
             className="bg-gradient-primary"
@@ -205,7 +304,7 @@ export const Profile: React.FC = () => {
             />
           </div>
 
-          <Button 
+          <Button
             onClick={handleChangePassword}
             disabled={loading || !profileData.currentPassword || !profileData.newPassword || !profileData.confirmPassword}
             variant="outline"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Plus, 
-  Edit2, 
-  Trash2, 
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Plus,
+  Edit2,
+  Trash2,
   UtensilsCrossed,
   Upload,
   Eye,
@@ -20,62 +21,29 @@ import {
   Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface MenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  categoryId: string;
-  categoryName: string;
-  image?: string;
-  available: boolean;
-  featured: boolean;
-}
-
-const mockCategories = [
-  { id: '1', name: 'Appetizers' },
-  { id: '2', name: 'Main Courses' },
-  { id: '3', name: 'Desserts' },
-  { id: '4', name: 'Beverages' }
-];
+import { useAuth } from '@/components/auth/AuthProvider';
+import { ImageUpload } from '@/components/ui/image-upload';
+import { uploadMenuItemImage, deleteImage } from '@/lib/storage';
+import {
+  MenuItem,
+  Category,
+  getMenuItems,
+  addMenuItem,
+  updateMenuItem,
+  deleteMenuItem,
+  subscribeToMenuItems,
+  getCategories
+} from '@/lib/firestore';
 
 export const MenuItems: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([
-    {
-      id: '1',
-      name: 'Caesar Salad',
-      description: 'Fresh romaine lettuce with caesar dressing, croutons, and parmesan cheese',
-      price: 12.99,
-      categoryId: '1',
-      categoryName: 'Appetizers',
-      available: true,
-      featured: false
-    },
-    {
-      id: '2',
-      name: 'Grilled Salmon',
-      description: 'Atlantic salmon grilled to perfection with herbs and lemon',
-      price: 24.99,
-      categoryId: '2',
-      categoryName: 'Main Courses',
-      available: true,
-      featured: true
-    },
-    {
-      id: '3',
-      name: 'Chocolate Cake',
-      description: 'Rich chocolate cake with vanilla ice cream',
-      price: 8.99,
-      categoryId: '3',
-      categoryName: 'Desserts',
-      available: false,
-      featured: false
-    }
-  ]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -89,14 +57,55 @@ export const MenuItems: React.FC = () => {
     image: ''
   });
 
+  useEffect(() => {
+    if (!user) return;
+
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [menuItemsData, categoriesData] = await Promise.all([
+          getMenuItems(user.uid),
+          getCategories(user.uid)
+        ]);
+        setMenuItems(menuItemsData);
+        setCategories(categoriesData);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load menu items.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+
+    const unsubscribe = subscribeToMenuItems(user.uid, (updatedMenuItems) => {
+      setMenuItems(updatedMenuItems);
+    });
+
+    return () => unsubscribe();
+  }, [user, toast]);
+
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || item.categoryId === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const handleAddItem = () => {
+    if (categories.length === 0) {
+      toast({
+        title: "No categories available",
+        description: "Please create at least one category before adding menu items.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEditingItem(null);
     setFormData({
       name: '',
@@ -124,7 +133,7 @@ export const MenuItems: React.FC = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSaveItem = () => {
+  const handleSaveItem = async () => {
     if (!formData.name.trim() || !formData.categoryId || formData.price <= 0) {
       toast({
         title: "Error",
@@ -134,72 +143,117 @@ export const MenuItems: React.FC = () => {
       return;
     }
 
-    const categoryName = mockCategories.find(cat => cat.id === formData.categoryId)?.name || '';
+    if (!user) return;
 
-    if (editingItem) {
-      setMenuItems(prev => prev.map(item => 
-        item.id === editingItem.id 
-          ? { ...item, ...formData, categoryName }
-          : item
-      ));
+    const categoryName = categories.find(cat => cat.id === formData.categoryId)?.name || '';
+
+    try {
+      if (editingItem) {
+        await updateMenuItem(user.uid, editingItem.id, {
+          ...formData,
+          categoryName
+        });
+        toast({
+          title: "Item updated",
+          description: `"${formData.name}" has been updated successfully.`,
+        });
+      } else {
+        await addMenuItem(user.uid, {
+          ...formData,
+          categoryName
+        });
+        toast({
+          title: "Item added",
+          description: `"${formData.name}" has been added successfully.`,
+        });
+      }
+
+      setIsDialogOpen(false);
+    } catch (error) {
       toast({
-        title: "Item updated",
-        description: `"${formData.name}" has been updated successfully.`,
-      });
-    } else {
-      const newItem: MenuItem = {
-        id: Date.now().toString(),
-        ...formData,
-        categoryName
-      };
-      setMenuItems(prev => [...prev, newItem]);
-      toast({
-        title: "Item added",
-        description: `"${formData.name}" has been added successfully.`,
+        title: "Error",
+        description: "Failed to save menu item.",
+        variant: "destructive",
       });
     }
-
-    setIsDialogOpen(false);
   };
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
+    if (!user) return;
+
     const item = menuItems.find(item => item.id === id);
-    setMenuItems(prev => prev.filter(item => item.id !== id));
-    toast({
-      title: "Item deleted",
-      description: `"${item?.name}" has been deleted successfully.`,
-    });
+
+    try {
+      await deleteMenuItem(user.uid, id);
+      toast({
+        title: "Item deleted",
+        description: `"${item?.name}" has been deleted successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete menu item.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleToggleAvailability = (id: string) => {
-    setMenuItems(prev => prev.map(item => 
-      item.id === id 
-        ? { ...item, available: !item.available }
-        : item
-    ));
-    
+  const handleToggleAvailability = async (id: string) => {
+    if (!user) return;
+
     const item = menuItems.find(item => item.id === id);
-    toast({
-      title: "Item updated",
-      description: `"${item?.name}" is now ${item?.available ? 'unavailable' : 'available'}.`,
-    });
+    if (!item) return;
+
+    try {
+      await updateMenuItem(user.uid, id, { available: !item.available });
+      toast({
+        title: "Item updated",
+        description: `"${item.name}" is now ${item.available ? 'unavailable' : 'available'}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update item availability.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // In a real app, upload to Firebase Storage
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFormData(prev => ({ ...prev, image: e.target?.result as string }));
-      };
-      reader.readAsDataURL(file);
-      
+  const handleImageSelect = async (file: File) => {
+    if (!user) return;
+
+    setImageUploading(true);
+    try {
+      // Create a temporary ID for new items
+      const itemId = editingItem?.id || `temp_${Date.now()}`;
+      const imageUrl = await uploadMenuItemImage(user.uid, itemId, file);
+
+      setFormData(prev => ({ ...prev, image: imageUrl }));
+
       toast({
         title: "Image uploaded",
         description: "Image has been uploaded successfully.",
       });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setImageUploading(false);
     }
+  };
+
+  const handleImageRemove = async () => {
+    if (formData.image) {
+      try {
+        await deleteImage(formData.image);
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+      }
+    }
+    setFormData(prev => ({ ...prev, image: '' }));
   };
 
   return (
@@ -225,7 +279,11 @@ export const MenuItems: React.FC = () => {
             <div className="flex items-center space-x-2">
               <UtensilsCrossed className="w-5 h-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{menuItems.length}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{menuItems.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Total Items</p>
               </div>
             </div>
@@ -236,7 +294,11 @@ export const MenuItems: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Eye className="w-5 h-5 text-success" />
               <div>
-                <p className="text-2xl font-bold">{menuItems.filter(item => item.available).length}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{menuItems.filter(item => item.available).length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Available</p>
               </div>
             </div>
@@ -247,7 +309,11 @@ export const MenuItems: React.FC = () => {
             <div className="flex items-center space-x-2">
               <EyeOff className="w-5 h-5 text-muted-foreground" />
               <div>
-                <p className="text-2xl font-bold">{menuItems.filter(item => !item.available).length}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{menuItems.filter(item => !item.available).length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Unavailable</p>
               </div>
             </div>
@@ -258,7 +324,11 @@ export const MenuItems: React.FC = () => {
             <div className="flex items-center space-x-2">
               <ImageIcon className="w-5 h-5 text-warning" />
               <div>
-                <p className="text-2xl font-bold">{menuItems.filter(item => item.featured).length}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{menuItems.filter(item => item.featured).length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Featured</p>
               </div>
             </div>
@@ -285,7 +355,7 @@ export const MenuItems: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {mockCategories.map(category => (
+                {categories.map(category => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
@@ -302,8 +372,8 @@ export const MenuItems: React.FC = () => {
           <Card key={item.id} className="admin-card overflow-hidden">
             <div className="aspect-video bg-muted relative">
               {item.image ? (
-                <img 
-                  src={item.image} 
+                <img
+                  src={item.image}
                   alt={item.name}
                   className="w-full h-full object-cover"
                 />
@@ -323,7 +393,7 @@ export const MenuItems: React.FC = () => {
                 </Badge>
               </div>
             </div>
-            
+
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
@@ -338,7 +408,7 @@ export const MenuItems: React.FC = () => {
                   </p>
                 </div>
               </div>
-              
+
               <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                 {item.description}
               </p>
@@ -353,7 +423,7 @@ export const MenuItems: React.FC = () => {
                     {item.available ? "Available" : "Unavailable"}
                   </Label>
                 </div>
-                
+
                 <div className="flex space-x-2">
                   <Button
                     variant="outline"
@@ -382,7 +452,7 @@ export const MenuItems: React.FC = () => {
             <UtensilsCrossed className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">No menu items found</h3>
             <p className="text-muted-foreground mb-6">
-              {searchQuery || selectedCategory !== 'all' 
+              {searchQuery || selectedCategory !== 'all'
                 ? 'Try adjusting your search or filter criteria'
                 : 'Create your first menu item to get started'
               }
@@ -405,7 +475,7 @@ export const MenuItems: React.FC = () => {
               {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
             </DialogTitle>
             <DialogDescription>
-              {editingItem 
+              {editingItem
                 ? 'Update the menu item information below.'
                 : 'Create a new menu item for your restaurant.'
               }
@@ -453,15 +523,15 @@ export const MenuItems: React.FC = () => {
 
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
-              <Select 
-                value={formData.categoryId} 
+              <Select
+                value={formData.categoryId}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
               >
                 <SelectTrigger className="admin-input">
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockCategories.map(category => (
+                  {categories.map(category => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
                     </SelectItem>
@@ -470,48 +540,14 @@ export const MenuItems: React.FC = () => {
               </Select>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2">
               <Label>Item Image</Label>
-              <div className="border-2 border-dashed border-border rounded-lg p-6">
-                {formData.image ? (
-                  <div className="relative">
-                    <img 
-                      src={formData.image} 
-                      alt="Preview"
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
-                      className="absolute top-2 right-2"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Upload an image for this menu item
-                      </p>
-                      <Label htmlFor="image-upload" className="cursor-pointer">
-                        <Button variant="outline" asChild>
-                          <span>Choose Image</span>
-                        </Button>
-                      </Label>
-                      <Input
-                        id="image-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ImageUpload
+                onImageSelect={handleImageSelect}
+                onImageRemove={handleImageRemove}
+                currentImage={formData.image}
+                loading={imageUploading}
+              />
             </div>
 
             <div className="flex items-center justify-between">
