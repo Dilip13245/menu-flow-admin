@@ -228,18 +228,18 @@ export const Categories: React.FC = () => {
   return (
     <div className="space-y-6 animate-slide-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between animate-slide-in-up">
-        <div>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-slide-in-up">
+        <div className="flex-1">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
-            Categories
+        Categories
           </h1>
           <p className="text-muted-foreground mt-2 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
-            Organize your menu items into categories
+        Organize your menu items into categories
           </p>
         </div>
         <Button
           onClick={handleAddCategory}
-          className="admin-button admin-gradient shadow-[var(--shadow-elegant)] hover:shadow-[var(--shadow-glow)]"
+          className="admin-button admin-gradient shadow-[var(--shadow-elegant)] hover:shadow-[var(--shadow-glow)] w-full md:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Category
@@ -307,7 +307,10 @@ export const Categories: React.FC = () => {
           <div className="space-y-4">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div
+                  key={i}
+                  className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-border rounded-lg gap-4"
+                >
                   <div className="flex items-center space-x-4">
                     <Skeleton className="w-4 h-4" />
                     <div>
@@ -335,15 +338,15 @@ export const Categories: React.FC = () => {
                 </Button>
               </div>
             ) : (
-              categories.map((category) => (
+              categories.map((category: Category) => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors gap-4"
                 >
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4 w-full md:w-auto">
                     <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex flex-wrap items-center space-x-3">
                         <h3 className="font-medium">{category.name}</h3>
                         <Badge variant={category.visible ? "default" : "secondary"}>
                           {category.visible ? "Visible" : "Hidden"}
@@ -352,13 +355,13 @@ export const Categories: React.FC = () => {
                           {getCategoryItemCount(category.id)} items
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground mt-1 break-words">
                         {category.description}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center space-x-2 w-full md:w-auto">
                     <div className="flex items-center space-x-2">
                       <Label htmlFor={`visible-${category.id}`} className="text-sm">
                         {category.visible ? "Visible" : "Hidden"}
@@ -373,6 +376,7 @@ export const Categories: React.FC = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEditCategory(category)}
+                      className="mt-2 md:mt-0"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -381,6 +385,7 @@ export const Categories: React.FC = () => {
                       size="sm"
                       onClick={() => handleDeleteCategory(category.id)}
                       disabled={getCategoryItemCount(category.id) > 0}
+                      className="mt-2 md:mt-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

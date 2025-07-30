@@ -259,18 +259,18 @@ export const MenuItems: React.FC = () => {
   return (
     <div className="space-y-6 animate-slide-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between animate-slide-in-up">
-        <div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-slide-in-up">
+        <div className="flex-1">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
-            Menu Items
+        Menu Items
           </h1>
           <p className="text-muted-foreground mt-2 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
-            Manage your restaurant's menu items
+        Manage your restaurant's menu items
           </p>
         </div>
         <Button
           onClick={handleAddItem}
-          className="admin-button admin-gradient shadow-[var(--shadow-elegant)] hover:shadow-[var(--shadow-glow)]"
+          className="admin-button admin-gradient shadow-[var(--shadow-elegant)] hover:shadow-[var(--shadow-glow)] w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Menu Item
