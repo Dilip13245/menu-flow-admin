@@ -64,7 +64,7 @@ export const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -77,7 +77,7 @@ export const AdminLayout: React.FC = () => {
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 admin-sidebar transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:inset-0 lg:flex lg:flex-col
+        lg:translate-x-0 lg:static lg:flex lg:flex-col lg:shrink-0
       `}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-border">
           <div className="flex items-center space-x-3">
@@ -140,7 +140,7 @@ export const AdminLayout: React.FC = () => {
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top header */}
         <header className="h-16 bg-card/80 backdrop-blur-xl border-b border-border flex items-center justify-between px-6">
           <Button
@@ -172,7 +172,7 @@ export const AdminLayout: React.FC = () => {
         </header>
 
         {/* Page content */}
-        <main className="p-6">
+        <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>
