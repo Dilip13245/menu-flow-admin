@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Plus, 
   Edit2, 
@@ -16,53 +17,23 @@ import {
   GripVertical
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Category {
-  id: string;
-  name: string;
-  description: string;
-  visible: boolean;
-  itemCount: number;
-  order: number;
-}
+import { useAuth } from '@/components/auth/AuthProvider';
+import { 
+  Category, 
+  getCategories, 
+  addCategory, 
+  updateCategory, 
+  deleteCategory, 
+  subscribeToCategories,
+  getMenuItems 
+} from '@/lib/firestore';
 
 export const Categories: React.FC = () => {
   const { toast } = useToast();
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      id: '1',
-      name: 'Appetizers',
-      description: 'Start your meal with our delicious appetizers',
-      visible: true,
-      itemCount: 8,
-      order: 1
-    },
-    {
-      id: '2',
-      name: 'Main Courses',
-      description: 'Our signature main dishes',
-      visible: true,
-      itemCount: 15,
-      order: 2
-    },
-    {
-      id: '3',
-      name: 'Desserts',
-      description: 'Sweet treats to end your meal',
-      visible: true,
-      itemCount: 6,
-      order: 3
-    },
-    {
-      id: '4',
-      name: 'Beverages',
-      description: 'Refreshing drinks and specialty cocktails',
-      visible: false,
-      itemCount: 12,
-      order: 4
-    }
-  ]);
-
+  const { user } = useAuth();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -70,6 +41,42 @@ export const Categories: React.FC = () => {
     description: '',
     visible: true
   });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [categoriesData, itemsData] = await Promise.all([
+          getCategories(user.uid),
+          getMenuItems(user.uid)
+        ]);
+        setCategories(categoriesData);
+        setMenuItems(itemsData);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load categories.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+
+    const unsubscribe = subscribeToCategories(user.uid, (updatedCategories) => {
+      setCategories(updatedCategories);
+    });
+
+    return () => unsubscribe();
+  }, [user, toast]);
+
+  const getCategoryItemCount = (categoryId: string) => {
+    return menuItems.filter(item => item.categoryId === categoryId).length;
+  };
 
   const handleAddCategory = () => {
     setEditingCategory(null);
@@ -87,7 +94,7 @@ export const Categories: React.FC = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSaveCategory = () => {
+  const handleSaveCategory = async () => {
     if (!formData.name.trim()) {
       toast({
         title: "Error",
@@ -97,38 +104,41 @@ export const Categories: React.FC = () => {
       return;
     }
 
-    if (editingCategory) {
-      // Update existing category
-      setCategories(prev => prev.map(cat => 
-        cat.id === editingCategory.id 
-          ? { ...cat, ...formData }
-          : cat
-      ));
+    if (!user) return;
+
+    try {
+      if (editingCategory) {
+        await updateCategory(user.uid, editingCategory.id, formData);
+        toast({
+          title: "Category updated",
+          description: `"${formData.name}" has been updated successfully.`,
+        });
+      } else {
+        await addCategory(user.uid, {
+          ...formData,
+          order: categories.length + 1,
+        });
+        toast({
+          title: "Category added",
+          description: `"${formData.name}" has been added successfully.`,
+        });
+      }
+
+      setIsDialogOpen(false);
+    } catch (error) {
       toast({
-        title: "Category updated",
-        description: `"${formData.name}" has been updated successfully.`,
-      });
-    } else {
-      // Add new category
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        ...formData,
-        itemCount: 0,
-        order: categories.length + 1
-      };
-      setCategories(prev => [...prev, newCategory]);
-      toast({
-        title: "Category added",
-        description: `"${formData.name}" has been added successfully.`,
+        title: "Error",
+        description: "Failed to save category.",
+        variant: "destructive",
       });
     }
-
-    setIsDialogOpen(false);
   };
 
-  const handleDeleteCategory = (id: string) => {
-    const category = categories.find(cat => cat.id === id);
-    if (category && category.itemCount > 0) {
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!user) return;
+
+    const itemCount = getCategoryItemCount(categoryId);
+    if (itemCount > 0) {
       toast({
         title: "Cannot delete category",
         description: "This category contains menu items. Please remove all items first.",
@@ -137,25 +147,40 @@ export const Categories: React.FC = () => {
       return;
     }
 
-    setCategories(prev => prev.filter(cat => cat.id !== id));
-    toast({
-      title: "Category deleted",
-      description: "The category has been deleted successfully.",
-    });
+    try {
+      await deleteCategory(user.uid, categoryId);
+      toast({
+        title: "Category deleted",
+        description: "The category has been deleted successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete category.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleToggleVisibility = (id: string) => {
-    setCategories(prev => prev.map(cat => 
-      cat.id === id 
-        ? { ...cat, visible: !cat.visible }
-        : cat
-    ));
-    
-    const category = categories.find(cat => cat.id === id);
-    toast({
-      title: "Category updated",
-      description: `"${category?.name}" is now ${category?.visible ? 'hidden' : 'visible'}.`,
-    });
+  const handleToggleVisibility = async (categoryId: string) => {
+    if (!user) return;
+
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) return;
+
+    try {
+      await updateCategory(user.uid, categoryId, { visible: !category.visible });
+      toast({
+        title: "Category updated",
+        description: `"${category.name}" is now ${category.visible ? 'hidden' : 'visible'}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update category visibility.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -181,7 +206,11 @@ export const Categories: React.FC = () => {
             <div className="flex items-center space-x-2">
               <FolderOpen className="w-5 h-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{categories.length}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{categories.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Total Categories</p>
               </div>
             </div>
@@ -192,7 +221,11 @@ export const Categories: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Eye className="w-5 h-5 text-success" />
               <div>
-                <p className="text-2xl font-bold">{categories.filter(cat => cat.visible).length}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{categories.filter(cat => cat.visible).length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Visible</p>
               </div>
             </div>
@@ -203,7 +236,11 @@ export const Categories: React.FC = () => {
             <div className="flex items-center space-x-2">
               <EyeOff className="w-5 h-5 text-muted-foreground" />
               <div>
-                <p className="text-2xl font-bold">{categories.filter(cat => !cat.visible).length}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">{categories.filter(cat => !cat.visible).length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Hidden</p>
               </div>
             </div>
@@ -221,73 +258,90 @@ export const Categories: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {categories.map((category) => (
-              <div
-                key={category.id}
-                className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <h3 className="font-medium">{category.name}</h3>
-                      <Badge variant={category.visible ? "default" : "secondary"}>
-                        {category.visible ? "Visible" : "Hidden"}
-                      </Badge>
-                      <Badge variant="outline">
-                        {category.itemCount} items
-                      </Badge>
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <Skeleton className="w-4 h-4" />
+                    <div>
+                      <Skeleton className="h-5 w-32 mb-2" />
+                      <Skeleton className="h-4 w-48" />
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {category.description}
-                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Skeleton className="h-8 w-20" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
                   </div>
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor={`visible-${category.id}`} className="text-sm">
-                      {category.visible ? "Visible" : "Hidden"}
-                    </Label>
-                    <Switch
-                      id={`visible-${category.id}`}
-                      checked={category.visible}
-                      onCheckedChange={() => handleToggleVisibility(category.id)}
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditCategory(category)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteCategory(category.id)}
-                    disabled={category.itemCount > 0}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+              ))
+            ) : categories.length === 0 ? (
+              <div className="text-center py-12">
+                <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No categories yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Create your first category to organize your menu items
+                </p>
+                <Button onClick={handleAddCategory}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Category
+                </Button>
               </div>
-            ))}
-          </div>
+            ) : (
+              categories.map((category) => (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <h3 className="font-medium">{category.name}</h3>
+                        <Badge variant={category.visible ? "default" : "secondary"}>
+                          {category.visible ? "Visible" : "Hidden"}
+                        </Badge>
+                        <Badge variant="outline">
+                          {getCategoryItemCount(category.id)} items
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {category.description}
+                      </p>
+                    </div>
+                  </div>
 
-          {categories.length === 0 && (
-            <div className="text-center py-12">
-              <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No categories yet</h3>
-              <p className="text-muted-foreground mb-6">
-                Create your first category to organize your menu items
-              </p>
-              <Button onClick={handleAddCategory}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add First Category
-              </Button>
-            </div>
-          )}
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor={`visible-${category.id}`} className="text-sm">
+                        {category.visible ? "Visible" : "Hidden"}
+                      </Label>
+                      <Switch
+                        id={`visible-${category.id}`}
+                        checked={category.visible}
+                        onCheckedChange={() => handleToggleVisibility(category.id)}
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditCategory(category)}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteCategory(category.id)}
+                      disabled={getCategoryItemCount(category.id) > 0}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
